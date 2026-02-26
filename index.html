@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoodLog — Daily Mood Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #faf7f2;
+    --surface: #ffffff;
+    --border: #e8e0d5;
+    --text: #1a1612;
+    --muted: #9b8f83;
+    --accent: #e85d26;
+    --font-head: 'Playfair Display', serif;
+    --font-body: 'Outfit', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    padding: 2rem 1rem 6rem;
+  }
+
+  /* grain texture */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 9999;
+  }
+
+  .wrapper { max-width: 560px; margin: 0 auto; }
+
+  /* ── HEADER ── */
+  header {
+    text-align: center;
+    padding: 3rem 0 2.5rem;
+    animation: fadeDown 0.6s ease both;
+  }
+  .date-label {
+    font-size: 0.78rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--muted);
+    font-weight: 500; margin-bottom: 0.8rem;
+  }
+  h1 {
+    font-family: var(--font-head);
+    font-size: 3rem; font-weight: 900;
+    line-height: 1; letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  h1 em { font-style: italic; color: var(--accent); }
+  .subtitle {
+    color: var(--muted); font-size: 0.9rem;
+    margin-top: 0.6rem; font-weight: 300;
+  }
+
+  /* ── MOOD CARD ── */
+  .mood-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 2.2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.04);
+    animation: fadeUp 0.5s 0.1s ease both;
+  }
+  .card-label {
+    font-size: 0.75rem; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--muted);
+    font-weight: 600; margin-bottom: 1.2rem;
+  }
+
+  /* ── MOOD PICKER ── */
+  .mood-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 1.8rem;
+  }
+  .mood-btn {
+    aspect-ratio: 1;
+    background: var(--bg);
+    border: 2px solid transparent;
+    border-radius: 16px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1.8rem;
+  }
+  .mood-btn span.label {
+    font-size: 0.6rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); font-family: var(--font-body);
+  }
+  .mood-btn:hover { transform: scale(1.06); background: #f0ece6; }
+  .mood-btn.selected {
+    border-color: var(--accent);
+    background: #fff4ef;
+    transform: scale(1.08);
+    box-shadow: 0 4px 16px rgba(232,93,38,0.15);
+  }
+
+  /* ── NOTE INPUT ── */
+  .note-area {
+    width: 100%; padding: 1rem 1.2rem;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 14px; font-family: var(--font-body);
+    font-size: 0.95rem; color: var(--text);
+    resize: none; outline: none; line-height: 1.6;
+    transition: border-color 0.2s;
+  }
+  .note-area::placeholder { color: var(--muted); }
+  .note-area:focus { border-color: var(--accent); }
+
+  .log-btn {
+    width: 100%; margin-top: 1rem;
+    background: var(--accent); color: white;
+    border: none; border-radius: 14px;
+    padding: 1rem; font-family: var(--font-body);
+    font-size: 1rem; font-weight: 600;
+    cursor: pointer; transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+    letter-spacing: 0.01em;
+  }
+  .log-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(232,93,38,0.3); }
+  .log-btn:active { transform: scale(0.98); }
+  .log-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* ── STREAK BANNER ── */
+  .streak-banner {
+    background: var(--text);
+    color: white; border-radius: 16px;
+    padding: 1rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem;
+    animation: fadeUp 0.5s 0.2s ease both;
+  }
+  .streak-left { display: flex; align-items: center; gap: 0.8rem; }
+  .streak-fire { font-size: 1.6rem; }
+  .streak-text { font-size: 0.85rem; color: rgba(255,255,255,0.6); }
+  .streak-num {
+    font-family: var(--font-head);
+    font-size: 1.8rem; font-weight: 900;
+    color: var(--accent);
+  }
+
+  /* ── HISTORY ── */
+  .history-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 2rem 2.2rem;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.04);
+    animation: fadeUp 0.5s 0.3s ease both;
+  }
+  .history-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+  .history-title {
+    font-family: var(--font-head);
+    font-size: 1.2rem; font-weight: 700;
+  }
+  .clear-btn {
+    font-size: 0.75rem; color: var(--muted);
+    background: none; border: none; cursor: pointer;
+    font-family: var(--font-body);
+    text-decoration: underline; text-underline-offset: 2px;
+  }
+  .clear-btn:hover { color: var(--accent); }
+
+  .entry-list { display: flex; flex-direction: column; gap: 0.8rem; }
+
+  .entry {
+    display: flex; align-items: flex-start; gap: 1rem;
+    padding: 0.9rem 1rem;
+    background: var(--bg); border-radius: 14px;
+    animation: fadeUp 0.3s ease both;
+  }
+  .entry-emoji { font-size: 1.6rem; flex-shrink: 0; line-height: 1; padding-top: 2px; }
+  .entry-body { flex: 1; }
+  .entry-meta {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 0.2rem;
+  }
+  .entry-mood-name { font-size: 0.8rem; font-weight: 600; }
+  .entry-time { font-size: 0.72rem; color: var(--muted); }
+  .entry-note { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+
+  .empty-state {
+    text-align: center; padding: 2rem 1rem;
+    color: var(--muted); font-size: 0.9rem;
+  }
+  .empty-state .big { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
+  /* ── WEEKLY CHART ── */
+  .week-chart {
+    display: flex; gap: 0.4rem; align-items: flex-end;
+    height: 60px; margin-top: 1.5rem; padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .week-bar-wrap {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; gap: 0.3rem;
+  }
+  .week-bar {
+    width: 100%; background: var(--border);
+    border-radius: 4px 4px 0 0;
+    transition: height 0.4s ease;
+    min-height: 4px;
+  }
+  .week-day { font-size: 0.65rem; color: var(--muted); font-weight: 500; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 2rem; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: white;
+    padding: 0.8rem 1.6rem; border-radius: 100px;
+    font-size: 0.875rem; font-weight: 500;
+    opacity: 0; transition: all 0.3s;
+    pointer-events: none; z-index: 1000;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="date-label" id="today-date"></div>
+    <h1>Mood<em>Log</em></h1>
+    <p class="subtitle">A quiet place to track how you feel.</p>
+  </header>
+
+  <!-- STREAK -->
+  <div class="streak-banner">
+    <div class="streak-left">
+      <div class="streak-fire">🔥</div>
+      <div>
+        <div style="font-weight:600;font-size:0.95rem">Day Streak</div>
+        <div class="streak-text">Keep logging daily</div>
+      </div>
+    </div>
+    <div class="streak-num" id="streak-num">0</div>
+  </div>
+
+  <!-- LOG MOOD CARD -->
+  <div class="mood-card">
+    <div class="card-label">How are you feeling right now?</div>
+
+    <div class="mood-grid">
+      <button class="mood-btn" data-mood="rad" data-score="5" onclick="selectMood(this)">
+        🤩<span class="label">Rad</span>
+      </button>
+      <button class="mood-btn" data-mood="good" data-score="4" onclick="selectMood(this)">
+        😊<span class="label">Good</span>
+      </button>
+      <button class="mood-btn" data-mood="meh" data-score="3" onclick="selectMood(this)">
+        😐<span class="label">Meh</span>
+      </button>
+      <button class="mood-btn" data-mood="bad" data-score="2" onclick="selectMood(this)">
+        😔<span class="label">Bad</span>
+      </button>
+      <button class="mood-btn" data-mood="awful" data-score="1" onclick="selectMood(this)">
+        😩<span class="label">Awful</span>
+      </button>
+    </div>
+
+    <textarea class="note-area" id="note-input" rows="3"
+      placeholder="Add a note… what's on your mind? (optional)"></textarea>
+
+    <button class="log-btn" id="log-btn" onclick="logMood()" disabled>
+      Log My Mood
+    </button>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="history-card">
+    <div class="history-header">
+      <div class="history-title">This Week</div>
+      <button class="clear-btn" onclick="clearAll()">Clear all</button>
+    </div>
+
+    <div class="entry-list" id="entry-list">
+      <div class="empty-state">
+        <div class="big">📓</div>
+        No entries yet. Log your first mood above!
+      </div>
+    </div>
+
+    <div class="week-chart" id="week-chart"></div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── DATA ──
+  const MOODS = {
+    rad:   { emoji: '🤩', label: 'Rad',   color: '#f5a623', score: 5 },
+    good:  { emoji: '😊', label: 'Good',  color: '#4caf7d', score: 4 },
+    meh:   { emoji: '😐', label: 'Meh',   color: '#9b8f83', score: 3 },
+    bad:   { emoji: '😔', label: 'Bad',   color: '#5b7fff', score: 2 },
+    awful: { emoji: '😩', label: 'Awful', color: '#e85d26', score: 1 },
+  };
+
+  let selectedMood = null;
+
+  function getEntries() {
+    return JSON.parse(localStorage.getItem('moodlog_entries') || '[]');
+  }
+  function saveEntries(entries) {
+    localStorage.setItem('moodlog_entries', JSON.stringify(entries));
+  }
+
+  // ── INIT ──
+  function init() {
+    const now = new Date();
+    document.getElementById('today-date').textContent = now.toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    renderHistory();
+    renderStreak();
+    renderWeekChart();
+  }
+
+  // ── SELECT MOOD ──
+  function selectMood(btn) {
+    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedMood = btn.dataset.mood;
+    document.getElementById('log-btn').disabled = false;
+  }
+
+  // ── LOG MOOD ──
+  function logMood() {
+    if (!selectedMood) return;
+    const note = document.getElementById('note-input').value.trim();
+    const entry = {
+      id: Date.now(),
+      mood: selectedMood,
+      note: note,
+      timestamp: new Date().toISOString()
+    };
+    const entries = getEntries();
+    entries.unshift(entry);
+    saveEntries(entries);
+
+    // reset UI
+    document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('note-input').value = '';
+    document.getElementById('log-btn').disabled = true;
+    selectedMood = null;
+
+    renderHistory();
+    renderStreak();
+    renderWeekChart();
+    showToast('Mood logged! ' + MOODS[entry.mood].emoji);
+  }
+
+  // ── RENDER HISTORY ──
+  function renderHistory() {
+    const entries = getEntries();
+    const list = document.getElementById('entry-list');
+
+    if (entries.length === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="big">📓</div>No entries yet. Log your first mood above!</div>`;
+      return;
+    }
+
+    // show last 10
+    list.innerHTML = entries.slice(0, 10).map((e, i) => {
+      const m = MOODS[e.mood];
+      const d = new Date(e.timestamp);
+      const timeStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+        + ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      return `
+        <div class="entry" style="animation-delay:${i * 0.04}s">
+          <div class="entry-emoji">${m.emoji}</div>
+          <div class="entry-body">
+            <div class="entry-meta">
+              <span class="entry-mood-name" style="color:${m.color}">${m.label}</span>
+              <span class="entry-time">${timeStr}</span>
+            </div>
+            ${e.note ? `<div class="entry-note">${e.note}</div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── STREAK ──
+  function renderStreak() {
+    const entries = getEntries();
+    if (entries.length === 0) { document.getElementById('streak-num').textContent = '0'; return; }
+
+    const dates = [...new Set(entries.map(e => e.timestamp.slice(0, 10)))].sort().reverse();
+    let streak = 1;
+    const today = new Date().toISOString().slice(0, 10);
+    if (dates[0] !== today) { document.getElementById('streak-num').textContent = '0'; return; }
+
+    for (let i = 1; i < dates.length; i++) {
+      const prev = new Date(dates[i - 1]);
+      const curr = new Date(dates[i]);
+      const diff = (prev - curr) / (1000 * 60 * 60 * 24);
+      if (diff === 1) streak++;
+      else break;
+    }
+    document.getElementById('streak-num').textContent = streak;
+  }
+
+  // ── WEEK CHART ──
+  function renderWeekChart() {
+    const entries = getEntries();
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const today = new Date();
+    const chart = document.getElementById('week-chart');
+
+    // build last 7 days
+    const weeks = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const dayEntries = entries.filter(e => e.timestamp.slice(0, 10) === key);
+      const avg = dayEntries.length
+        ? dayEntries.reduce((s, e) => s + MOODS[e.mood].score, 0) / dayEntries.length
+        : 0;
+      weeks.push({ day: days[d.getDay()], avg, hasEntry: dayEntries.length > 0 });
+    }
+
+    chart.innerHTML = weeks.map(w => {
+      const h = w.avg ? Math.round((w.avg / 5) * 48) + 8 : 4;
+      const color = w.avg >= 4 ? '#4caf7d' : w.avg >= 3 ? '#f5a623' : w.avg > 0 ? '#e85d26' : '#e8e0d5';
+      return `
+        <div class="week-bar-wrap">
+          <div class="week-bar" style="height:${h}px;background:${color}"></div>
+          <div class="week-day">${w.day}</div>
+        </div>`;
+    }).join('');
+  }
+
+  // ── CLEAR ──
+  function clearAll() {
+    if (!confirm('Clear all mood entries? This cannot be undone.')) return;
+    localStorage.removeItem('moodlog_entries');
+    renderHistory(); renderStreak(); renderWeekChart();
+    showToast('All entries cleared.');
+  }
+
+  // ── TOAST ──
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  init();
+</script>
+</body>
+</html>
